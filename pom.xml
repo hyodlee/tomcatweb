@@ -64,7 +64,7 @@
                 <linkXRef>false</linkXRef>
                 <targetJdk>1.6</targetJdk>
                 <rulesets>
-                    <ruleset>/rulesets/basic.xml</ruleset>
+                    <ruleset>${basedir}/navi.ruleset</ruleset>
                 </rulesets>
             </configuration>
         </plugin>

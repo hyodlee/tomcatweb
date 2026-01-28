@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>테스트 페이지</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -54,12 +55,11 @@
 
           console.log(html);
 
-          // 가져온 HTML에서 class가 gnb인 ul 태그를 제거
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-          doc.querySelectorAll('ul.gnb').forEach((element) => element.remove());
+          // 가져온 HTML에서 class가 gnb인 ul 태그를 제거 (jQuery 사용)
+          const $container = $('<div>').append($.parseHTML(html));
+          $container.find('ul.gnb').remove();
 
-          content.innerHTML = doc.body.innerHTML;
+          content.innerHTML = $container.html();
         } catch (error) {
           content.innerHTML = '<p style="color: red;">불러오기에 실패했습니다.</p>';
         }

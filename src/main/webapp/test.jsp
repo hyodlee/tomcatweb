@@ -51,6 +51,9 @@
             throw new Error('요청 실패');
           }
           const html = await response.text();
+          
+          console.log(html);
+          
           content.innerHTML = html;
         } catch (error) {
           content.innerHTML = '<p style="color: red;">불러오기에 실패했습니다.</p>';

@@ -51,10 +51,15 @@
             throw new Error('요청 실패');
           }
           const html = await response.text();
-          
+
           console.log(html);
-          
-          content.innerHTML = html;
+
+          // 가져온 HTML에서 class가 gnb인 ul 태그를 제거
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          doc.querySelectorAll('ul.gnb').forEach((element) => element.remove());
+
+          content.innerHTML = doc.body.innerHTML;
         } catch (error) {
           content.innerHTML = '<p style="color: red;">불러오기에 실패했습니다.</p>';
         }

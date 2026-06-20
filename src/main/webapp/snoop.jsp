@@ -6,6 +6,7 @@
 	<%@ page import="java.util.*" %>
 </HEAD>
 <BODY>
+<%@ include file="/WEB-INF/jsp/resource-warning.jspf" %>
 
 <H1>WebApp JSP Snoop page</H1>
 <img src="images/jbosscorp_logo.png">

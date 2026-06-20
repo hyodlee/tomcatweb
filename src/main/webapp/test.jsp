@@ -27,7 +27,6 @@
   </style>
 </head>
 <body>
-  <%@ include file="/WEB-INF/jsp/resource-warning.jspf" %>
   <h1>test.jsp</h1>
   <p>아래 버튼을 클릭하면 test1.jsp, test2.jsp 내용을 가져와서 표시합니다.</p>
 

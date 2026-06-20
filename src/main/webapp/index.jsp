@@ -8,7 +8,6 @@
 <title>tomcatweb</title>
 </head>
 <body>
-<%@ include file="/WEB-INF/jsp/resource-warning.jspf" %>
 tomcatweb<br/>
 테스트입니다<br/>
 <%=new Date()%>

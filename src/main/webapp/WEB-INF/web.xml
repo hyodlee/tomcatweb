@@ -9,6 +9,10 @@
     <filter>
         <filter-name>resourceWarningFilter</filter-name>
         <filter-class>ResourceWarningFilter</filter-class>
+        <init-param>
+            <param-name>resourceWarningThresholdPercent</param-name>
+            <param-value>90</param-value>
+        </init-param>
     </filter>
 
     <filter-mapping>

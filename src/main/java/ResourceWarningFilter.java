@@ -23,10 +23,32 @@ import javax.servlet.http.HttpServletResponseWrapper;
  * HTML 응답에 시스템 자원 사용률 경고 배너를 자동으로 삽입하는 필터입니다.
  */
 public class ResourceWarningFilter implements Filter {
-    private static final double RESOURCE_WARNING_THRESHOLD = 90.0d;
+    private static final double DEFAULT_RESOURCE_WARNING_THRESHOLD = 90.0d;
+    private static final String THRESHOLD_INIT_PARAM = "resourceWarningThresholdPercent";
     private static final DecimalFormat RESOURCE_USAGE_FORMAT = new DecimalFormat("0.0");
 
+    private double resourceWarningThreshold = DEFAULT_RESOURCE_WARNING_THRESHOLD;
+
     public void init(FilterConfig filterConfig) throws ServletException {
+        resourceWarningThreshold = DEFAULT_RESOURCE_WARNING_THRESHOLD;
+        if (filterConfig == null) {
+            return;
+        }
+
+        String configuredThreshold = filterConfig.getInitParameter(THRESHOLD_INIT_PARAM);
+        if (configuredThreshold == null || configuredThreshold.trim().length() == 0) {
+            return;
+        }
+
+        try {
+            double parsedThreshold = Double.parseDouble(configuredThreshold.trim());
+            if (parsedThreshold < 0.0d || parsedThreshold > 100.0d) {
+                throw new ServletException(THRESHOLD_INIT_PARAM + " 값은 0 이상 100 이하의 숫자여야 합니다.");
+            }
+            resourceWarningThreshold = parsedThreshold;
+        } catch (NumberFormatException numberFormatException) {
+            throw new ServletException(THRESHOLD_INIT_PARAM + " 값은 숫자여야 합니다.", numberFormatException);
+        }
     }
 
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
@@ -48,8 +70,8 @@ public class ResourceWarningFilter implements Filter {
         String contentType = responseWrapper.getContentType();
         ResourceUsageStatus usageStatus = getResourceUsageStatus();
 
-        if (isHtmlResponse(contentType) && usageStatus.isWarning()) {
-            body = insertWarningBanner(body, usageStatus);
+        if (isHtmlResponse(contentType) && usageStatus.isWarning(resourceWarningThreshold)) {
+            body = insertWarningBanner(body, usageStatus, resourceWarningThreshold);
         }
 
         response.getWriter().write(body);
@@ -127,8 +149,8 @@ public class ResourceWarningFilter implements Filter {
         return -1.0d;
     }
 
-    private static String insertWarningBanner(String body, ResourceUsageStatus usageStatus) {
-        String banner = buildWarningBanner(usageStatus);
+    private static String insertWarningBanner(String body, ResourceUsageStatus usageStatus, double warningThreshold) {
+        String banner = buildWarningBanner(usageStatus, warningThreshold);
         String lowerBody = body.toLowerCase();
         int bodyStartIndex = lowerBody.indexOf("<body");
         if (bodyStartIndex < 0) {
@@ -143,9 +165,10 @@ public class ResourceWarningFilter implements Filter {
         return body.substring(0, bodyTagEndIndex + 1) + banner + body.substring(bodyTagEndIndex + 1);
     }
 
-    private static String buildWarningBanner(ResourceUsageStatus usageStatus) {
+    private static String buildWarningBanner(ResourceUsageStatus usageStatus, double warningThreshold) {
         String usagePercent = RESOURCE_USAGE_FORMAT.format(usageStatus.getUsagePercent());
         String usageName = escapeHtml(usageStatus.getUsageName());
+        String thresholdPercent = RESOURCE_USAGE_FORMAT.format(warningThreshold);
         return "<style type=\"text/css\">"
             + ".resource-warning{margin:12px 0;padding:14px 16px;border:1px solid #d97706;"
             + "border-left:6px solid #d97706;border-radius:4px;background:#fff7ed;color:#7c2d12;"
@@ -153,7 +176,7 @@ public class ResourceWarningFilter implements Filter {
             + "</style>"
             + "<div class=\"resource-warning\" role=\"alert\">"
             + "현재 " + usageName + " 사용률이 " + usagePercent + "%입니다. "
-            + "JVM 힙/시스템 메모리/시스템 CPU 중 하나가 90% 이상 사용 중이므로 사이트가 느릴 수 있습니다."
+            + "JVM 힙/시스템 메모리/시스템 CPU 중 하나가 " + thresholdPercent + "% 이상 사용 중이므로 사이트가 느릴 수 있습니다."
             + "</div>";
     }
 
@@ -181,8 +204,8 @@ public class ResourceWarningFilter implements Filter {
             return usagePercent;
         }
 
-        boolean isWarning() {
-            return usagePercent >= RESOURCE_WARNING_THRESHOLD;
+        boolean isWarning(double warningThreshold) {
+            return usagePercent >= warningThreshold;
         }
     }
 

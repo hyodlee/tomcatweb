@@ -1,0 +1,78 @@
+<%@ page import="java.lang.management.ManagementFactory" %>
+<%@ page import="java.lang.management.MemoryMXBean" %>
+<%@ page import="java.lang.management.MemoryUsage" %>
+<%@ page import="java.lang.management.OperatingSystemMXBean" %>
+<%@ page import="java.text.DecimalFormat" %>
+<%@ page import="java.lang.reflect.Method" %>
+<%
+    final double RESOURCE_WARNING_THRESHOLD = 90.0d;
+    double highestUsagePercent = -1.0d;
+    String highestUsageName = "";
+
+    MemoryMXBean resourceMemoryBean = ManagementFactory.getMemoryMXBean();
+    MemoryUsage heapUsage = resourceMemoryBean.getHeapMemoryUsage();
+    if (heapUsage != null && heapUsage.getMax() > 0) {
+        double heapUsagePercent = ((double) heapUsage.getUsed() / (double) heapUsage.getMax()) * 100.0d;
+        highestUsagePercent = heapUsagePercent;
+        highestUsageName = "JVM 힙 메모리";
+    }
+
+    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+    if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+        com.sun.management.OperatingSystemMXBean sunOsBean = (com.sun.management.OperatingSystemMXBean) osBean;
+        long totalPhysicalMemory = sunOsBean.getTotalPhysicalMemorySize();
+        long freePhysicalMemory = sunOsBean.getFreePhysicalMemorySize();
+        if (totalPhysicalMemory > 0) {
+            double systemMemoryUsagePercent = ((double) (totalPhysicalMemory - freePhysicalMemory) / (double) totalPhysicalMemory) * 100.0d;
+            if (systemMemoryUsagePercent > highestUsagePercent) {
+                highestUsagePercent = systemMemoryUsagePercent;
+                highestUsageName = "시스템 메모리";
+            }
+        }
+    }
+
+    // CPU 사용률은 WAS/JDK 버전에 따라 제공 여부가 달라 리플렉션으로 안전하게 확인합니다.
+    double systemCpuUsagePercent = -1.0d;
+    try {
+        Method systemCpuLoadMethod = osBean.getClass().getMethod("getSystemCpuLoad", new Class[0]);
+        Object systemCpuLoadValue = systemCpuLoadMethod.invoke(osBean, new Object[0]);
+        if (systemCpuLoadValue instanceof Number) {
+            double systemCpuLoad = ((Number) systemCpuLoadValue).doubleValue();
+            if (systemCpuLoad >= 0.0d) {
+                systemCpuUsagePercent = systemCpuLoad * 100.0d;
+            }
+        }
+    } catch (Exception cpuLoadException) {
+        double systemLoadAverage = osBean.getSystemLoadAverage();
+        int availableProcessors = osBean.getAvailableProcessors();
+        if (systemLoadAverage >= 0.0d && availableProcessors > 0) {
+            systemCpuUsagePercent = Math.min((systemLoadAverage / (double) availableProcessors) * 100.0d, 100.0d);
+        }
+    }
+    if (systemCpuUsagePercent > highestUsagePercent) {
+        highestUsagePercent = systemCpuUsagePercent;
+        highestUsageName = "시스템 CPU";
+    }
+
+    DecimalFormat resourceUsageFormat = new DecimalFormat("0.0");
+    boolean showResourceWarning = highestUsagePercent >= RESOURCE_WARNING_THRESHOLD;
+%>
+<% if (showResourceWarning) { %>
+<style type="text/css">
+  .resource-warning {
+    margin: 12px 0;
+    padding: 14px 16px;
+    border: 1px solid #d97706;
+    border-left: 6px solid #d97706;
+    border-radius: 4px;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-weight: bold;
+    line-height: 1.5;
+  }
+</style>
+<div class="resource-warning" role="alert">
+  현재 <%= highestUsageName %> 사용률이 <%= resourceUsageFormat.format(highestUsagePercent) %>%입니다.
+  JVM 힙/시스템 메모리/시스템 CPU 중 하나가 90% 이상 사용 중이므로 사이트가 느릴 수 있습니다.
+</div>
+<% } %>
